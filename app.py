@@ -17,6 +17,7 @@ def load_models():
     # Load YOLO or your quality scoring weights here
     return None
 
+scores_dict = calculate_video_scores("videos/colibri_video1.mp4")
 # --- CORE PROCESSING FUNCTION ---
 def process_video_stream(video_path, output_folder="detected_frames"):
     os.makedirs(output_folder, exist_ok=True)
