@@ -1,0 +1,48 @@
+# Virtual Environment
+env/
+venv/
+.venv/
+ENV/
+
+# Python
+*.py[cod]
+*$py.class
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Media Files
+FrameSampler/videos/
+FrameSampler/detected_frames/
+QualityAnalyzer/videos/
+QualityAnalyzer/images/
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.mkv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# API Keys (if stored separately)
+.env
+*.key
+secrets.json
