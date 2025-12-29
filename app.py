@@ -18,16 +18,17 @@ def load_models():
     return None
 
 # --- CORE PROCESSING FUNCTION ---
-def process_video_stream(video_path, output_folder="FrameSampler/detected_frames"):
+def process_video_stream(video_path, output_folder="detected_frames"):
     os.makedirs(output_folder, exist_ok=True)
     cap = cv2.VideoCapture(video_path)
     # Create background subtractor object
-    back_sub = cv2.createBackgroundSubtractorMOG2(history=100, varThreshold=50)
+    scores_dict = calculate_video_scores(video_path)
     
+    saved_frames = []
     frame_idx = 0
     saved_count = 0
     last_frame = None
-    saved_frames = []  # Store frame paths
+    scores_threshold = get_scores_threshold(scores_dict["weighted_scores"])
 
     while True:
         ret, frame = cap.read()
@@ -47,17 +48,15 @@ def process_video_stream(video_path, output_folder="FrameSampler/detected_frames
           frame_idx += 1
           continue
 
-     
-        motion_score, ssim_score, sharpness_score = calculate_frame_metrics(small_frame, last_frame, back_sub)
         
-        if calculate_weighted_score(scores_dict, frame_idx // 5) > pick_best_frames(scores_dict): # 0.3% motion and 700 mse threshold
-            file_path = os.path.join(output_folder, f"frame_{frame_idx:04d}.jpg")
-            cv2.imwrite(file_path, frame) # Save the original high-quality frame
-            saved_frames.append(file_path)  # Add to list
-            last_frame = small_frame
-            saved_count += 1
-            print(f"Weighted score: {calculate_weighted_score(scores_dict, frame_idx)}")
-            print(f"Frame {saved_count} saved")
+        if scores_dict["weighted_scores"][frame_idx] > scores_threshold: 
+            if calculate_ssim_score(small_frame, last_frame) < 0.9:
+                file_path = os.path.join(output_folder, f"frame_{frame_idx:04d}.jpg")
+                cv2.imwrite(file_path, frame) # Save the original high-quality frame
+                last_frame = small_frame
+                saved_frames.append(file_path)
+                saved_count += 1
+                print(f"Frame {saved_count} saved")
             
         frame_idx += 1
         
@@ -67,7 +66,8 @@ def process_video_stream(video_path, output_folder="FrameSampler/detected_frames
 
     cap.release()
     print(f"Done! Check the {output_folder} folder.")
-    return saved_frames  # Return list of saved frame paths 
+    return saved_frames
+
 
 # --- USER INTERFACE ---
 st.title("🐾 WildFrame: Wildlife Still Extractor")

@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 from skimage.metrics import structural_similarity as ssim
 
+
 def calculate_ssim_score(image1, image2, threshold=0.82):
     gray_1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
     gray_2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
@@ -35,6 +36,17 @@ def calculate_frame_metrics(frame:np.array, last_frame, back_sub):
 def normalize(array):
     array = np.array(array)
     return (array - array.min()) / (array.max() - array.min())
+
+def calculate_sharpness_motion(frame, last_frame, back_sub):
+    mask = back_sub.apply(frame)
+    nonzero_count = cv2.countNonZero(mask)
+    motion_ratio_score = nonzero_count / (360*640)
+    sharpness_score = get_sharpness_score(frame)
+
+    return (motion_ratio_score, sharpness_score)
+
+def calculate_weighted_score(motion_scores, sharpness_scores, w1=0.3, w2=0.7):
+    return motion_scores*w1 + sharpness_scores*w2
 
 
 def calculate_video_scores(video_path):
@@ -77,11 +89,64 @@ def calculate_video_scores(video_path):
     scores_dict["motion_scores"] = normalize(scores_dict["motion_scores"])
     #scores_dict["ssim_scores"]  = normalize(scores_dict["ssim_scores"])
     scores_dict["sharpness_scores"] = normalize(scores_dict["sharpness_scores"])
+    scores_dict["weighted_scores"] = calculate_weighted_score(scores_dict["motion_scores"], 
+                                                              scores_dict["sharpness_scores"])
 
 
     cap.release()
     print("All metrics saved successflly")
     
     return scores_dict
+
+def get_scores_threshold(weighted_scores):
+    return np.percentile(weighted_scores, 90)
+
+colibri_frames_dir = "detected_frames/colibri"
+koala_frames_dir = "detected_frames/koala"
+
+def process_video_stream(video_path, output_folder="detected_frames"):
+    os.makedirs(output_folder, exist_ok=True)
+    cap = cv2.VideoCapture(video_path)
+    # Create background subtractor object
+    scores_dict = calculate_video_scores(video_path)
+    
+    frame_idx = 0
+    saved_count = 0
+    last_frame = None
+    scores_threshold = get_scores_threshold(scores_dict["weighted_scores"])
+
+    while True:
+        ret, frame = cap.read()
+        if not ret: break
         
-scores_dict = calculate_video_scores("videos/colibri_video1.mp4")
+        # Process only every 5th frame
+        if frame_idx % 5 != 0:
+            frame_idx += 1
+            continue
+        
+        # 1. Resize for detection 
+        small_frame = cv2.resize(frame, (640, 360))
+        
+        # 3. Save to disk if motion is found (instead of appending to a list)
+        if last_frame is None:
+          last_frame = small_frame
+          frame_idx += 1
+          continue
+
+        
+        if scores_dict["weighted_scores"][frame_idx] > scores_threshold: 
+            if calculate_ssim_score(small_frame, last_frame) < 0.9:
+                file_path = os.path.join(output_folder, f"frame_{frame_idx:04d}.jpg")
+                cv2.imwrite(file_path, frame) # Save the original high-quality frame
+                last_frame = small_frame
+                saved_count += 1
+                print(f"Frame {saved_count} saved")
+            
+        frame_idx += 1
+        
+        # Periodically clear output
+        if frame_idx % 500 == 0:
+            print(f"Processed {frame_idx} frames... saved {saved_count}")
+
+    cap.release()
+    print(f"Done! Check the {output_folder} folder.")
