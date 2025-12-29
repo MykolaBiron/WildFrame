@@ -104,12 +104,15 @@ def get_scores_threshold(weighted_scores):
 colibri_frames_dir = "detected_frames/colibri"
 koala_frames_dir = "detected_frames/koala"
 
-def process_video_stream(video_path, output_folder="detected_frames"):
+
+def process_video_stream(video_path, output_folder="detected_frames/test"):
+    """Process  uploaded video and extract best frames based on weighted score"""
     os.makedirs(output_folder, exist_ok=True)
     cap = cv2.VideoCapture(video_path)
     # Create background subtractor object
     scores_dict = calculate_video_scores(video_path)
     
+    saved_frames = []
     frame_idx = 0
     saved_count = 0
     last_frame = None
@@ -139,6 +142,7 @@ def process_video_stream(video_path, output_folder="detected_frames"):
                 file_path = os.path.join(output_folder, f"frame_{frame_idx:04d}.jpg")
                 cv2.imwrite(file_path, frame) # Save the original high-quality frame
                 last_frame = small_frame
+                saved_frames.append(file_path)
                 saved_count += 1
                 print(f"Frame {saved_count} saved")
             
@@ -150,3 +154,4 @@ def process_video_stream(video_path, output_folder="detected_frames"):
 
     cap.release()
     print(f"Done! Check the {output_folder} folder.")
+    return saved_frames

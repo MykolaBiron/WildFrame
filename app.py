@@ -18,7 +18,7 @@ def load_models():
     return None
 
 # --- CORE PROCESSING FUNCTION ---
-def process_video_stream(video_path, output_folder="detected_frames"):
+def process_video_stream(video_path, output_folder="detected_frames/test"):
     os.makedirs(output_folder, exist_ok=True)
     cap = cv2.VideoCapture(video_path)
     # Create background subtractor object
