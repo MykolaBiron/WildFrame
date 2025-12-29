@@ -65,17 +65,17 @@ def calculate_video_scores(video_path):
             frame_count += 1
             continue
         
-        motion_score, ssim_score, sharpness_score = calculate_frame_metrics(small_frame, 
+        motion_score, sharpness_score = calculate_sharpness_motion(small_frame, 
                                                                             last_frame,
                                                                             back_sub)
         # Add the scores for the crrent videoframe to the result diSct
         scores_dict["motion_scores"].append(motion_score)
-        scores_dict["ssim_scores"].append(ssim_score)
+        #scores_dict["ssim_scores"].append(ssim_score)
         scores_dict["sharpness_scores"].append(sharpness_score)
     
     # Normalize scores dict
     scores_dict["motion_scores"] = normalize(scores_dict["motion_scores"])
-    scores_dict["ssim_scores"]  = normalize(scores_dict["ssim_scores"])
+    #scores_dict["ssim_scores"]  = normalize(scores_dict["ssim_scores"])
     scores_dict["sharpness_scores"] = normalize(scores_dict["sharpness_scores"])
 
 
@@ -84,15 +84,4 @@ def calculate_video_scores(video_path):
     
     return scores_dict
         
-def calculate_weighted_score(scores_dict, idx, w1=0.3, w2=0.7):
-    score1 = scores_dict["motion_scores"][idx]
-    score2 = scores_dict["sharpness_scores"][idx]
-    weighted_score =  w1*score1 +  w2*score2 
-    return weighted_score
-
-
-def pick_best_frames(scores_dict):
-    weighted_scores = scores_dict["motion_scores"]*0.3 + scores_dict["sharpness_scores"]*0.7
-    weighted_scores = np.array(sorted(weighted_scores))
-    percentile_97 = np.percentile(weighted_scores, 97)
-    return percentile_97
+scores_dict = calculate_video_scores("videos/colibri_video1.mp4")

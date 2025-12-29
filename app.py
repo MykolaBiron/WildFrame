@@ -17,18 +17,17 @@ def load_models():
     # Load YOLO or your quality scoring weights here
     return None
 
-scores_dict = calculate_video_scores("videos/colibri_video1.mp4")
 # --- CORE PROCESSING FUNCTION ---
-def process_video_stream(video_path, output_folder="detected_frames"):
+def process_video_stream(video_path, output_folder="FrameSampler/detected_frames"):
     os.makedirs(output_folder, exist_ok=True)
     cap = cv2.VideoCapture(video_path)
     # Create background subtractor object
     back_sub = cv2.createBackgroundSubtractorMOG2(history=100, varThreshold=50)
-    #scores_dict = calculate_video_scores("videos/colibri_video1.mp4")
     
     frame_idx = 0
     saved_count = 0
     last_frame = None
+    saved_frames = []  # Store frame paths
 
     while True:
         ret, frame = cap.read()
@@ -54,6 +53,7 @@ def process_video_stream(video_path, output_folder="detected_frames"):
         if calculate_weighted_score(scores_dict, frame_idx // 5) > pick_best_frames(scores_dict): # 0.3% motion and 700 mse threshold
             file_path = os.path.join(output_folder, f"frame_{frame_idx:04d}.jpg")
             cv2.imwrite(file_path, frame) # Save the original high-quality frame
+            saved_frames.append(file_path)  # Add to list
             last_frame = small_frame
             saved_count += 1
             print(f"Weighted score: {calculate_weighted_score(scores_dict, frame_idx)}")
@@ -67,6 +67,7 @@ def process_video_stream(video_path, output_folder="detected_frames"):
 
     cap.release()
     print(f"Done! Check the {output_folder} folder.")
+    return saved_frames  # Return list of saved frame paths 
 
 # --- USER INTERFACE ---
 st.title("🐾 WildFrame: Wildlife Still Extractor")
@@ -78,7 +79,13 @@ num_images = st.slider("Number of images to extract", 1, 10, 5)
 if uploaded_file is not None:
     if st.button("Extract Best Moments"):
         with st.spinner("AI is analyzing frames..."):
-            stills = process_video_stream(uploaded_file, num_images)
+            # Save uploaded file to temporary location
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
+                tmp_file.write(uploaded_file.read())
+                video_path = tmp_file.name
+            
+            scores_dict = calculate_video_scores(video_path)
+            stills = process_video_stream(video_path)
             
             # Display results in a grid
             cols = st.columns(3)
