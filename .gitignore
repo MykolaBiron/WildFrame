@@ -29,6 +29,7 @@ QualityAnalyzer/images/
 *.mov
 *.wmv
 *.mkv
+*.pt
 
 # IDE
 .vscode/
