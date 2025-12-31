@@ -5,6 +5,7 @@ import tempfile
 from pipeline_utils import *
 from ultralytics import YOLO
 import torch
+from yolo_utils import classify_animal
 from image_enhancer import enhance_image
 
 # Import your custom modules
@@ -16,6 +17,8 @@ st.set_page_config(page_title="WildFrame AI", layout="centered")
 # 1. Initialize session state keys at the top of your app
 if 'stills' not in st.session_state:
     st.session_state.stills = []
+if 'detected_animals' not in st.session_state:
+    st.session_state.detected_animals = []
 if 'enhanced_image' not in st.session_state:
     st.session_state.enhanced_image = None
 if 'original_image' not in st.session_state:
@@ -27,14 +30,17 @@ extract_clicked = False
 @st.cache_resource
 def load_yolo():
     # Load YOLO or your quality scoring weights here
-    return YOLO("ml_models/best.pt")
+    return YOLO("yolov8s.pt")  # Will auto-download on first run
+
+@st.cache_resource
+def load_yolo_animals():
+    return YOLO("ml_models/yolo_animals.pt")
 
 @st.cache_resource
 def load_rsgan():
     return torch.load("ml_models/ersgan.pth")
 
 yolo = load_yolo()
-ersgan = load_rsgan()
 
 # --- CORE PROCESSING FUNCTION ---
 def process_video_stream(video_path, output_folder, n_frames):
@@ -68,10 +74,10 @@ def process_video_stream(video_path, output_folder, n_frames):
           frame_idx += 1
           continue
 
-        #results = yolo.predict(small_frame)
-        #if len(results[0].boxes) == 0:
-            # Skip if frame does not contain an animal
-            #continue
+        results = yolo.predict(small_frame)
+        if len(results[0].boxes) == 0:
+            #Skip if frame does not contain an animal
+            continue
         
         if scores_dict["weighted_scores"][frame_idx] > scores_threshold: 
             if calculate_ssim_score(small_frame, last_frame) < 0.9:
@@ -81,6 +87,9 @@ def process_video_stream(video_path, output_folder, n_frames):
                 saved_frames.append(file_path)
                 saved_count += 1
                 print(f"Frame {saved_count} saved")
+
+                # Get yolo classification
+                st.session_state.detected_animals.append(classify_animal(yolo, file_path))
             
         frame_idx += 1
         
@@ -123,7 +132,7 @@ if st.session_state.stills:
     # Display results in a grid
     cols = st.columns(3)
     for idx, img in enumerate(st.session_state.stills):
-        cols[idx % 3].image(img, caption=f"Best Shot #{idx+1}")
+        cols[idx % 3].image(img, caption=f"Best Shot #{idx+1}: {st.session_state.detected_animals[idx]}")
         if cols[idx % 3].button("Enhance quality", key=f"enhanced_{idx}"):
             # Run deep learning model
             original_image = img
