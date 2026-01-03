@@ -1,5 +1,6 @@
 # WildFrame Computer Vision app
 
+[![Live Demo](https://wildframe-dpejshiibdrz4figxrfdp3.streamlit.app/)
 
 ## 📦 Technologies
 - Pytorch: Image upscaling deep learning model
